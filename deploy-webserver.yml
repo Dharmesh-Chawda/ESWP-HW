@@ -1,0 +1,37 @@
+---
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: Install Apache
+      package:
+        name: apache2
+        state: present
+
+    - name: Start and enable Apache
+      systemd:
+        name: apache2
+        enabled: yes
+        state: started
+
+    - name: Configure Apache to listen on port 8080
+      lineinfile:
+        path: /etc/apache2/apache2.conf
+        regexp: '^Listen 80'
+        line: 'Listen 8080'
+        state: present
+
+    - name: Update firewall rules to allow port 8080 (for Amazon Linux 2)
+      shell: |
+        sudo firewall-cmd --permanent --zone=public --add-port=8080/tcp
+        sudo firewall-cmd --reload
+      when: ansible_os_family == 'RedHat'
+
+    - name: Create a Hello World page for VM1 or VM2
+      template:
+        src: hello_world_template.html.j2
+        dest: /var/www/html/index.html
+
+    - name: Restart Apache
+      systemd:
+        name: apache2
+        state: restarted
